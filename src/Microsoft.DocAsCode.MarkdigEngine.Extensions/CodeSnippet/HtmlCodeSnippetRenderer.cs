@@ -7,6 +7,7 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
+    using System.Net;
     using System.Text;
 
     using Markdig.Helpers;
@@ -67,6 +68,7 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
         };
 
 
+        
         // C# code snippet comment block: // <[/]snippetname>
         private static readonly string CFamilyCodeSnippetCommentStartLineTemplate = "//<{tagname}>";
         private static readonly string CFamilyCodeSnippetCommentEndLineTemplate = "//</{tagname}>";
@@ -74,6 +76,11 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
         // C# code snippet region block: start -> #region snippetname, end -> #endregion
         private static readonly string CSharpCodeSnippetRegionStartLineTemplate = "#region{tagname}";
         private static readonly string CSharpCodeSnippetRegionEndLineTemplate = "#endregion";
+
+        // C# code snippet comment block: @* <[/]snippetname>
+        private static readonly string CSharpRazorFamilyCodeSnippetCommentStartLineTemplate = "@*<{tagname}>*@";
+        private static readonly string CSharpRazorFamilyCodeSnippetCommentEndLineTemplate = "@*</{tagname}>*@";
+
 
         // VB code snippet comment block: ' <[/]snippetname>
         private static readonly string BasicFamilyCodeSnippetCommentStartLineTemplate = "'<{tagname}>";
@@ -124,7 +131,7 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
         {
             AddExtractorItems(new[] { "vb", "vbhtml" },
                 new CodeSnippetExtrator(BasicFamilyCodeSnippetCommentStartLineTemplate, BasicFamilyCodeSnippetCommentEndLineTemplate, _context));
-            AddExtractorItems(new[] { "actionscript", "arduino", "assembly", "cpp", "csharp", "cshtml", "cuda", "d", "fsharp", "go", "java", "javascript", "pascal", "php", "processing", "rust", "scala", "smalltalk", "swift", "typescript" },
+            AddExtractorItems(new[] { "actionscript", "arduino", "assembly", "cpp", "csharp", "cshtml","css", "cuda", "d", "fsharp", "go", "java", "javascript", "pascal", "php", "processing", "rust", "scala", "smalltalk", "swift", "typescript" },
                 new CodeSnippetExtrator(CFamilyCodeSnippetCommentStartLineTemplate, CFamilyCodeSnippetCommentEndLineTemplate, _context));
             AddExtractorItems(new[] { "xml", "xaml", "html", "cshtml", "vbhtml" },
                 new CodeSnippetExtrator(MarkupLanguageFamilyCodeSnippetCommentStartLineTemplate, MarkupLanguageFamilyCodeSnippetCommentEndLineTemplate, _context));
@@ -142,6 +149,9 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
                 new CodeSnippetExtrator(LispCodeSnippetRegionStartLineTemplate, LispCodeSnippetRegionEndLineTemplate, _context));
             AddExtractorItems(new[] { "vb", "vbhtml" },
                 new CodeSnippetExtrator(VBCodeSnippetRegionRegionStartLineTemplate, VBCodeSnippetRegionRegionEndLineTemplate, _context, false));
+            AddExtractorItems(new[] { "razor", "cshtml", "cs", "csharp" },
+                new CodeSnippetExtrator(CSharpRazorFamilyCodeSnippetCommentStartLineTemplate, CSharpRazorFamilyCodeSnippetCommentEndLineTemplate, _context, false));
+
         }
 
         private void AddExtractorItems(string[] languages, CodeSnippetExtrator extractor)
@@ -174,14 +184,27 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
 
         protected override void Write(HtmlRenderer renderer, CodeSnippet codeSnippet)
         {
-            var (content, codeSnippetPath) = _context.ReadFile(codeSnippet.CodePath, InclusionContext.File, codeSnippet);
-            
+            string content = null;
+            object codeSnippetPath = null;
+            //Download code if url
+            if (codeSnippet.CodePath.StartsWith("http"))
+            {
+                WebClient wc = new WebClient();
+                content=wc.DownloadString(codeSnippet.CodePath);
+                codeSnippetPath = null;
+            }
+            else
+            { 
+                (content, codeSnippetPath) = _context.ReadFile(codeSnippet.CodePath, InclusionContext.File, codeSnippet);
+            }
+
             if (content == null)
             {
                 _context.LogWarning("codesnippet-not-found", $"Cannot resolve '{codeSnippet.CodePath}' relative to '{InclusionContext.File}'.", codeSnippet);
                 renderer.Write(GetWarning());
                 return;
             }
+
 
             codeSnippet.SetAttributeString();
 

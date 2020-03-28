@@ -4,6 +4,7 @@
 namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
 {
     using Markdig.Syntax;
+    using System.Net;
 
     public class CodeSnippetInteractiveRewriter : InteractiveBaseRewriter
     {
@@ -11,6 +12,7 @@ namespace Microsoft.DocAsCode.MarkdigEngine.Extensions
         {
             if (markdownObject is CodeSnippet codeSnippet)
             {
+
                 codeSnippet.Language = GetLanguage(codeSnippet.Language, out bool isInteractive);
                 codeSnippet.IsInteractive = isInteractive;
 
